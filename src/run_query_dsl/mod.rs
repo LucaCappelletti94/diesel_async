@@ -85,7 +85,6 @@ pub mod methods {
     impl<'query, Conn, DB, T, U, ST> LoadQuery<'query, Conn, U> for T
     where
         Conn: AsyncConnection<Backend = DB>,
-        U: Send,
         DB: Backend + 'static,
         T: AsQuery + Send + 'query,
         T::Query: QueryFragment<DB> + QueryId + Send + 'query,
