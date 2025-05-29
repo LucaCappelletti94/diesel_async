@@ -90,7 +90,7 @@ pub mod methods {
         T: AsQuery + Send + 'query,
         T::Query: QueryFragment<DB> + QueryId + Send + 'query,
         T::SqlType: CompatibleType<U, DB, SqlType = ST>,
-        U: FromSqlRow<ST, DB> + Send + 'static,
+        U: FromSqlRow<ST, DB> + 'static,
         DB: QueryMetadata<T::SqlType>,
         ST: 'static,
     {
