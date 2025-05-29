@@ -340,7 +340,6 @@ pub trait RunQueryDsl<Conn>: Sized {
         conn: &'conn mut Conn,
     ) -> return_futures::LoadFuture<'conn, 'query, Self, Conn, U>
     where
-        U: Send,
         Conn: AsyncConnection,
         Self: methods::LoadQuery<'query, Conn, U> + 'query,
     {
