@@ -636,7 +636,7 @@ pub trait RunQueryDsl<Conn>: Sized {
         conn: &'conn mut Conn,
     ) -> return_futures::GetResult<'conn, 'query, diesel::dsl::Limit<Self>, Conn, U>
     where
-        U: Send + 'conn,
+        U: 'conn,
         Conn: AsyncConnection,
         Self: diesel::query_dsl::methods::LimitDsl,
         diesel::dsl::Limit<Self>: methods::LoadQuery<'query, Conn, U> + 'query,
