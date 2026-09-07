@@ -8,6 +8,7 @@ for Rust libraries in [RFC #1105](https://github.com/rust-lang/rfcs/blob/master/
 
 * Add support for `#[derive(MultiConnection)]`
 * Bump minimal supported Rust version to 1.88.0
+* Add support for the `wasm32-unknown-unknown` target with the `postgres` feature
 
 ## [0.9.2] - 2026-06-19
 

@@ -167,6 +167,22 @@ const FAKE_OID: u32 = 0;
 /// [`tokio_postgres::Connection`] with TLS enabled.
 ///
 /// [tokio_postgres_rustls]: https://docs.rs/tokio-postgres-rustls/0.12.0/tokio_postgres_rustls/
+///
+/// ## WebAssembly
+///
+/// On the `wasm32-unknown-unknown` target there is no TCP socket, so
+/// [`AsyncPgConnection::establish`] cannot open a connection and instead returns
+/// a [`ConnectionError::BadConnection`] error. The host environment has to
+/// provide an already connected [`tokio_postgres::Client`] and
+/// [`tokio_postgres::Connection`] (for example from a socket handed out by an
+/// edge runtime such as Cloudflare Workers), which are turned into an
+/// `AsyncPgConnection` with [`AsyncPgConnection::try_from_client_and_connection`].
+///
+/// Because [`AsyncConnection`] requires connections and
+/// their futures to be [`Send`], the provided stream must be [`Send`] as well.
+/// Edge and serverless runtimes satisfy this, but a typical browser stream (a
+/// `WebSocket` driven through `wasm-bindgen`) is `!Send`, so browser usage is
+/// not supported.
 pub struct AsyncPgConnection {
     conn: tokio_postgres::Client,
     stmt_cache: Mutex<StatementCache<diesel::pg::Pg, Statement>>,
@@ -306,6 +322,17 @@ impl AsyncConnection for AsyncPgConnection {
                 r.as_ref().err(),
             ));
         r
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    async fn establish(_database_url: &str) -> ConnectionResult<Self> {
+        Err(diesel::result::ConnectionError::BadConnection(
+            String::from(
+                "AsyncPgConnection::establish is not supported on the \
+             wasm32-unknown-unknown target; construct the connection with \
+             AsyncPgConnection::try_from_client_and_connection instead",
+            ),
+        ))
     }
 
     fn transaction_state(&mut self) -> &mut AnsiTransactionManager {
