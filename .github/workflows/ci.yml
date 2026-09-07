@@ -321,3 +321,26 @@ jobs:
           tool: cargo-hack
       - name: Check feature combinations
         run: cargo hack check --feature-powerset --no-dev-deps --depth 2
+  wasm:
+    name: Check wasm32-unknown-unknown build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+      - name: Install rust toolchain
+        run: |
+          rustup update stable
+          rustup override set stable
+          rustup target add wasm32-unknown-unknown
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@f51f967e158417aafa338a1e46ab22095f07aa01 # v2.8.2
+        with:
+          key: wasm-cargo-${{ hashFiles('**/Cargo.toml') }}
+      - name: Set environment variables
+        run: |
+          echo "RUSTFLAGS=-D warnings" >> "$GITHUB_ENV"
+      - name: Check diesel-async (wasm32-unknown-unknown)
+        run: cargo check --no-default-features --features postgres --target wasm32-unknown-unknown
+      - name: Check wasm example
+        run: cargo check --manifest-path examples/postgres/wasm/Cargo.toml --target wasm32-unknown-unknown
