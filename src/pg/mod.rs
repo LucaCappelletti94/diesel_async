@@ -292,7 +292,7 @@ impl<'a> AsyncConnectionCore for &'a AsyncPgConnection {
 impl AsyncConnection for AsyncPgConnection {
     type TransactionManager = AnsiTransactionManager;
 
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
     async fn establish(database_url: &str) -> ConnectionResult<Self> {
         let mut instrumentation = DynInstrumentation::default_instrumentation();
         instrumentation.on_connection_event(InstrumentationEvent::start_establish_connection(
@@ -324,7 +324,7 @@ impl AsyncConnection for AsyncPgConnection {
         r
     }
 
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(all(target_family = "wasm", target_os = "unknown"))]
     async fn establish(_database_url: &str) -> ConnectionResult<Self> {
         Err(diesel::result::ConnectionError::BadConnection(
             String::from(
@@ -1081,8 +1081,7 @@ where
     let (shutdown_tx, mut shutdown_rx) = tokio::sync::oneshot::channel();
     let mut conn = futures_util::stream::poll_fn(move |cx| conn.poll_message(cx));
 
-    #[cfg(not(target_arch = "wasm32"))]
-    tokio::spawn(async move {
+    let background_future = async move {
         loop {
             match futures_util::future::select(&mut shutdown_rx, conn.next()).await {
                 Either::Left(_) | Either::Right((None, _)) => break,
@@ -1103,31 +1102,13 @@ where
                 }
             }
         }
-    });
+    };
 
-    #[cfg(target_arch = "wasm32")]
-    wasm_bindgen_futures::spawn_local(async move {
-        loop {
-            match futures_util::future::select(&mut shutdown_rx, conn.next()).await {
-                Either::Left(_) | Either::Right((None, _)) => break,
-                Either::Right((Some(Ok(tokio_postgres::AsyncMessage::Notification(notif))), _)) => {
-                    let _: Result<_, _> = notification_tx.send(Ok(diesel::pg::PgNotification {
-                        process_id: notif.process_id(),
-                        channel: notif.channel().to_owned(),
-                        payload: notif.payload().to_owned(),
-                    }));
-                }
-                Either::Right((Some(Ok(_)), _)) => {}
-                Either::Right((Some(Err(e)), _)) => {
-                    let e = Arc::new(e);
-                    let _: Result<_, _> = error_tx.send(e.clone());
-                    let _: Result<_, _> =
-                        notification_tx.send(Err(error_helper::from_tokio_postgres_error(e)));
-                    break;
-                }
-            }
-        }
-    });
+    #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
+    tokio::spawn(background_future);
+
+    #[cfg(all(target_family = "wasm", target_os = "unknown"))]
+    wasm_bindgen_futures::spawn_local(background_future);
 
     (error_rx, notification_rx, shutdown_tx)
 }
